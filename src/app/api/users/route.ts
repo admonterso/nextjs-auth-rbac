@@ -1,42 +1,25 @@
-import { Z_Role } from "@/types/role";
+import { RegisterUserSchema, User } from "@/types/user";
 import { NextResponse } from "next/server";
-import { z } from "zod";
+// 500 200 201 404 403 401 400
 
 export async function GET(request: Request, context: { params: any }) {
   return NextResponse.json({ data: [] }, { status: 400 });
 }
-// 500 200 201 404 403 401 400
+
 export async function HEAD(request: Request) {}
 
 export async function POST(request: Request) {
   //validate the request body
   try {
-    const { fullName, email, password, role } = await request.json();
-    const registerUserSchema = z.object({
-      fullName: z.string(),
-      email: z
-        .string({
-          required_error: "Email is required",
-        })
-        .email({
-          message: "Invalid email",
-        }),
-      password: z
-        .string()
-        .min(6, {
-          message: "Password must be at least 6 characters",
-        })
-        .optional(),
-      role: Z_Role,
-    });
+    const { fullName, email, password, role }: User = await request.json();
 
-    const response = registerUserSchema.safeParse({
+    const response = RegisterUserSchema.safeParse({
       fullName,
       email,
       password,
       role,
     });
-    console.log(response);
+
     if (response.success === false) {
       return NextResponse.json(
         {
@@ -53,6 +36,7 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
+    // TODO: add user to Firebase Authenication & Firestore
 
     // in case of success
     return NextResponse.json(

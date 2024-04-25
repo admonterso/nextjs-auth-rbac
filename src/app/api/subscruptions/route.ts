@@ -1,7 +1,23 @@
 import { NextResponse } from "next/server";
 
 export async function GET(request: Request, context: { params: any }) {
-  return NextResponse.json({ data: [] }, { status: 400 });
+  return fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/firestore/collection/?pageSize=20&collectionName=Subscriptions&orderByField&filters=&pageToken=`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  )
+    .then(async (res) => {
+      const response = await res.json();
+      return NextResponse.json(response, { status: 200 });
+    })
+    .catch((e) => {
+      console.error(e);
+      return NextResponse.json(e, { status: 200 });
+    });
 }
 // 500 200 201 404 403 401 400
 export async function HEAD(request: Request) {}

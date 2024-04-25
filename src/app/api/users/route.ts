@@ -1,23 +1,41 @@
-import { RegisterUserSchema, User } from "@/types/user";
+import { firebaseAuth } from "@/provider";
+import { RegisterUserSchema, RegisterUser } from "@/types/user";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+
 import { NextResponse } from "next/server";
 // 500 200 201 404 403 401 400
 
-export async function GET(request: Request, context: { params: any }) {
-  return NextResponse.json({ data: [] }, { status: 400 });
+export async function GET() {
+  return fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/firestore/collection/?pageSize=2&collectionName=Users&orderByField=createTime&filters=&pageToken=`,
+    {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    }
+  )
+    .then(async (res) => {
+      const response = await res.json();
+      return NextResponse.json(response, { status: 200 });
+    })
+    .catch((e) => {
+      console.error("error in Users GET", e);
+      return NextResponse.json(e, { status: 500 });
+    });
 }
-
-export async function HEAD(request: Request) {}
 
 export async function POST(request: Request) {
   //validate the request body
   try {
-    const { fullName, email, password, role }: User = await request.json();
+    const { fullName, email, password, phoneNumber }: RegisterUser =
+      await request.json();
 
     const response = RegisterUserSchema.safeParse({
       fullName,
       email,
       password,
-      role,
+      phoneNumber,
     });
 
     if (response.success === false) {
@@ -27,7 +45,7 @@ export async function POST(request: Request) {
           data: {
             fullName,
             email,
-            role,
+            phoneNumber,
           },
           message: response.error.errors
             .map((error) => error.message)
@@ -36,17 +54,49 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-    // TODO: add user to Firebase Authenication & Firestore
+    if (!email || !password) {
+      return NextResponse.json(
+        {
+          status: "error",
+          data: {
+            email,
+          },
+          message: "Email and password are required",
+        },
+        { status: 400 }
+      );
+    }
 
-    // in case of success
-    return NextResponse.json(
-      {
-        fullName,
+    // create firebase user
+    try {
+      const response = await createUserWithEmailAndPassword(
+        firebaseAuth,
         email,
-        role,
-      },
-      { status: 201 }
-    );
+        password
+      ).then((userCredentials) => {
+        return userCredentials.user;
+      });
+
+      // in case of success
+      return NextResponse.json(
+        {
+          ...response,
+        },
+        { status: 201 }
+      );
+    } catch (e: any) {
+      return NextResponse.json(
+        {
+          status: "error",
+          data: {
+            email,
+            fullError: e,
+          },
+          message: e?.message || e,
+        },
+        { status: 400 }
+      );
+    }
   } catch (e) {
     return NextResponse.json(e, { status: 400 });
   }

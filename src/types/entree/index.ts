@@ -15,6 +15,7 @@ export const FirestoreEntreeSchema = z.object({
       required_error: ".houseId is required",
     })
     .min(1),
+  terminals: z.array(z.string()).optional(),
 
   //   balance: z
   //     .number({

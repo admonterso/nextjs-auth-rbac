@@ -1,4 +1,4 @@
-import { FirestoreEntreeType } from "@/types/entree";
+import { FirestoreEntreeSchema, FirestoreEntreeType } from "@/types/entree";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -17,12 +17,23 @@ export async function GET(
       }
     )
       .then(async (res) => {
-        const response: FirestoreEntreeType = await res.json();
-        const refferences = [];
-        if (response.houseId) {
-          refferences.push(
+        const entreeResponse: FirestoreEntreeType = await res.json();
+        const validated = FirestoreEntreeSchema.safeParse(entreeResponse);
+        if (!validated.success) {
+          return NextResponse.json(
+            {
+              error: validated.error,
+              message: "validation didn't pass after internal fetch Entrees/id",
+            },
+            { status: 400 }
+          );
+        }
+        const promises = [];
+        const terminalIds = entreeResponse.terminals ?? [];
+        promises.push(
+          ...terminalIds.map((id) =>
             fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/firestore/document/${response.houseId}?collectionName=Houses`,
+              `${process.env.NEXT_PUBLIC_BASE_URL}/api/firestore/document/${id}/?collectionName=Terminals`,
               {
                 method: "GET",
                 headers: {
@@ -30,19 +41,22 @@ export async function GET(
                 },
               }
             )
-          );
-        }
+          )
+        );
         try {
-          return Promise.all(refferences).then(async (res) => {
-            const house = await res[0].json();
+          return Promise.all(promises).then(async (res) => {
+            const terminals = await Promise.all(res.map((r) => r.json()));
             return NextResponse.json(
-              { ...response, house },
-              { status: house.status }
+              { ...entreeResponse, terminals },
+              { status: 200 }
             );
           });
         } catch (e) {
           return NextResponse.json(
-            { error: e, message: "Error in GET Entrees by id" },
+            {
+              error: e,
+              message: "Failed to fetch terminals for entree",
+            },
             { status: 500 }
           );
         }

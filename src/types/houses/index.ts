@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { CustomDocumentReference } from "../firestore";
 
 // extract the inferred type
 export type FirestoreHouseType = z.infer<typeof FirestoreHouseSchema>;
@@ -14,7 +13,10 @@ export const FirestoreHouseSchema = z.object({
     invalid_type_error: ".address should be a string",
     required_error: ".address is required",
   }),
-  entrees: CustomDocumentReference.array(),
+  entrees: z.array(z.string()).optional(),
+  terminals: z.array(z.string()).optional(),
+  families: z.array(z.string()).optional(),
+  members: z.array(z.string()).optional(),
   //   balance: z
   //     .number({
   //       invalid_type_error: ".balance should be a number",

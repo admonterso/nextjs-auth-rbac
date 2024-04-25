@@ -1,4 +1,4 @@
-import { FirestoreHouseType } from "@/types/houses";
+import { FirestoreHouseSchema, FirestoreHouseType } from "@/types/houses";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
@@ -18,20 +18,38 @@ export async function GET(
     )
       .then(async (res) => {
         const houseResponse: FirestoreHouseType = await res.json();
+        const validated = FirestoreHouseSchema.safeParse(houseResponse);
+        if (!validated.success) {
+          return NextResponse.json(
+            {
+              error: validated.error,
+              message: "validation didn't pass after internal fetch Houses/id",
+            },
+            { status: 400 }
+          );
+        }
+
         if (houseResponse.entrees) {
-          const refferences = houseResponse.entrees.map((entree) => {
-            return fetch(
-              `${process.env.NEXT_PUBLIC_BASE_URL}/api/firestore/document/${entree}?collectionName=Entrees`,
-              {
-                method: "GET",
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              }
-            );
-          });
+          const promises = [];
+          const enreeIds = houseResponse.entrees ?? [];
+          const terminalIds = houseResponse.terminals ?? [];
+          const familyIds = houseResponse.families ?? [];
+          const memberIds = houseResponse.members ?? [];
+          promises.push(
+            ...enreeIds.map((id) =>
+              fetch(
+                `${process.env.NEXT_PUBLIC_BASE_URL}/api/firestore/document/${id}/?collectionName=Entrees`,
+                {
+                  method: "GET",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              )
+            )
+          );
           try {
-            return Promise.all(refferences).then(async (res) => {
+            return Promise.all(promises).then(async (res) => {
               const entrees = await Promise.all(res.map((r) => r.json()));
               return NextResponse.json(
                 { ...houseResponse, entrees },

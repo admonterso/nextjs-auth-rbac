@@ -19,7 +19,6 @@ export async function GET(request: NextRequest) {
           .filter((filter) => filter.trim() !== "")
           .map((filter) => JSON.parse(filter)) as FirestoreFilterType[]) ?? [],
     };
-    console.log({ pageSize, pageToken, collectionName, filters });
     try {
       const response = await getDocumentsPagination({
         pageSize,
